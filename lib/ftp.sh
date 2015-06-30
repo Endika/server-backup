@@ -17,15 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with Server-Backup.  If not, see <http://www.gnu.org/licenses/>.
 
-# Not tested !!!!
-
 BAK_FTP_TIMEOUT=3
 BAK_FTP_CMD_BIN='/usr/bin/ncftp'
 BAK_FTP_CONFIG_FILE="$BAK_CONFIG_PATH/.ftpcfg"
 BAK_FTP_CHECK_BIN="/usr/bin/ncftpls -f $BAK_FTP_CONFIG_FILE -t $BAK_FTP_TIMEOUT -r 1"
 BAK_FTP_GET_BIN="/usr/bin/ncftpget -f $BAK_FTP_CONFIG_FILE -t $BAK_FTP_TIMEOUT -Z -r 1"
-BAK_FTP_PUT_BIN="/usr/bin/ncftpput -f $BAK_FTP_CONFIG_FILE -t $BAK_FTP_TIMEOUT -Z -r 1"
-BAK_FTP_BASE=''
+BAK_FTP_PUT_BIN="/usr/bin/ncftpput -f $BAK_FTP_CONFIG_FILE -t $BAK_FTP_TIMEOUT -m -Z -r 1"
+BAK_FTP_BASE="$BAK_FTP_INSTANCE"
 
 BAK_FTP_CURRENT_PATH=
 BAK_FTP_ERROR=0
@@ -101,6 +99,8 @@ ftp_snapshot() {
 
    $ECHO_BIN "$date" > "$cfile"
    $ECHO_BIN "FTP : Setting new current file : '$date'" >> $BAK_OUTPUT
+   $ECHO_BIN "FTP SNAPSHOT : '$BAK_FTP_BASE/' <- '$cfile' ($date)" >> $BAK_OUTPUT_EXTENDED
+   $ECHO_BIN " CMD : $BAK_FTP_PUT_BIN '$BAK_FTP_BASE/' '$cfile'" >> $BAK_OUTPUT_EXTENDED
    $BAK_FTP_PUT_BIN "$BAK_FTP_BASE/" "$cfile"  > $BAK_NULL_OUTPUT 2>&1
    error=$?
 
@@ -184,11 +184,13 @@ ftp_get() {
 
    if [ ! $BAK_FTP_ERROR -eq 0 ]; then return $BAK_FTP_ERROR; fi
 
+   $ECHO_BIN "FTP GET : '$localpath' <- '$BAK_FTP_BASE/$BAK_FTP_CURRENT_PATH/$name'" >> $BAK_OUTPUT_EXTENDED
    if [ -f "$file" ]; then
-      $ECHO_BIN "FTP GET : '$localpath' <- '$BAK_S3_BASE/$BAK_S3_CURRENT_PATH/$name'" >> $BAK_OUTPUT_EXTENDED
+      $ECHO_BIN " CMD : $BAK_FTP_GET_BIN '$localpath' '$BAK_FTP_BASE/$BAK_FTP_CURRENT_PATH/$name'" >> $BAK_OUTPUT_EXTENDED
       $BAK_FTP_GET_BIN "$localpath" "$BAK_FTP_BASE/$BAK_FTP_CURRENT_PATH/$name" > $BAK_NULL_OUTPUT 2>> $BAK_OUTPUT_EXTENDED
       error=$?
    else
+      $ECHO_BIN " ERROR: File '$file' not found" >> $BAK_OUTPUT_EXTENDED
       error=1
    fi
    return $error
@@ -201,11 +203,13 @@ ftp_put() {
 
    if [ ! $BAK_FTP_ERROR -eq 0 ]; then return $BAK_FTP_ERROR; fi
 
+   $ECHO_BIN "FTP PUT : '$BAK_FTP_BASE/$BAK_FTP_CURRENT_PATH/' <- '$file'" >> $BAK_OUTPUT_EXTENDED
    if [ -f "$file" ]; then
-      $ECHO_BIN "FTP PUT : '$BAK_S3_BASE/$BAK_S3_CURRENT_PATH/' <- '$file'" >> $BAK_OUTPUT_EXTENDED
+      $ECHO_BIN " CMD : $BAK_FTP_PUT_BIN '$BAK_FTP_BASE/$BAK_FTP_CURRENT_PATH/' '$file'" >> $BAK_OUTPUT_EXTENDED
       $BAK_FTP_PUT_BIN "$BAK_FTP_BASE/$BAK_FTP_CURRENT_PATH/" "$file" > $BAK_NULL_OUTPUT 2>> $BAK_OUTPUT_EXTENDED
       error=$?
    else
+      $ECHO_BIN " ERROR: File '$file' not found" >> $BAK_OUTPUT_EXTENDED
       error=1
    fi
    return $error
